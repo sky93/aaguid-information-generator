@@ -59,6 +59,12 @@ type BLOBPayload struct {
 	Entries     []aaguids.Entry `json:"entries"`
 }
 
+type PassKeyJSONRecord struct {
+	Name      string  `json:"name"`
+	IconDark  *string `json:"icon_dark"`
+	IconLight *string `json:"icon_light"`
+}
+
 /*
 jwsHeader models the JWT header portion (for JWS) needed to parse the MDS3-signed JWT.
 
@@ -117,7 +123,12 @@ func main() {
 	ctx := context.Background()
 
 	// 1. Fetch the JWT from the MDS3 well-known URL.
-	jwtBytes, err := fetchJWT(ctx, "https://mds3.fidoalliance.org/")
+	jwtBytes, err := fetch(ctx, "https://mds3.fidoalliance.org/")
+	if err != nil {
+		panic(fmt.Errorf("fetching MDS3 JWT: %w", err))
+	}
+
+	passkeyAuthenticatorAaguidsBytes, err := fetch(ctx, "https://raw.githubusercontent.com/passkeydeveloper/passkey-authenticator-aaguids/refs/heads/main/aaguid.json")
 	if err != nil {
 		panic(fmt.Errorf("fetching MDS3 JWT: %w", err))
 	}
@@ -134,6 +145,11 @@ func main() {
 		panic(fmt.Errorf("cannot unmarshal MDS payload: %w", err))
 	}
 
+	var blobPassKey map[string]PassKeyJSONRecord
+	if err := json.Unmarshal(passkeyAuthenticatorAaguidsBytes, &blobPassKey); err != nil {
+		panic(fmt.Errorf("cannot unmarshal passkey-authenticator-aaguids JSON payload: %w", err))
+	}
+
 	// 4. Build a map of [AAGUID] → Entry. Skip entries without a valid AAGUID (e.g. for UAF).
 	entriesMap := make(map[string]aaguids.Entry)
 	for _, entry := range blob.Entries {
@@ -144,6 +160,25 @@ func main() {
 			continue // skip invalid UUID
 		}
 		entriesMap[entry.AAGUID] = entry
+	}
+
+	for aaguid, entry := range blobPassKey {
+		icon, iconDark := "", ""
+		if entry.IconDark != nil {
+			iconDark = *entry.IconDark
+		}
+		if entry.IconLight != nil {
+			icon = *entry.IconLight
+		}
+		entriesMap[aaguid] = aaguids.Entry{
+			AAGUID: aaguid,
+			MetadataStatement: aaguids.MetadataStatement{
+				AAGUID:      aaguid,
+				Description: entry.Name,
+				Icon:        icon,
+				IconDark:    iconDark,
+			},
+		}
 	}
 
 	// 5) Prepare the output folder for writing types.go and metadata.go
@@ -186,12 +221,12 @@ func main() {
 // -----------------------------------------------------------------------------
 
 /*
-fetchJWT downloads the raw JWT bytes from the specified url. It checks for 2xx responses
+fetch downloads the raw JWT bytes from the specified url. It checks for 2xx responses
 and returns an error otherwise.
 
 This code expects the official MDS3 endpoint, typically "https://mds3.fidoalliance.org/".
 */
-func fetchJWT(ctx context.Context, url string) ([]byte, error) {
+func fetch(ctx context.Context, url string) ([]byte, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("creating HTTP request: %w", err)
@@ -203,7 +238,7 @@ func fetchJWT(ctx context.Context, url string) ([]byte, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode < http.StatusOK || resp.StatusCode > 299 {
-		return nil, fmt.Errorf("non-2xx response from MDS endpoint: %s", resp.Status)
+		return nil, fmt.Errorf("non-2xx response: %s", resp.Status)
 	}
 	return io.ReadAll(resp.Body)
 }

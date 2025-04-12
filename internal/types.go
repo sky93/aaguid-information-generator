@@ -290,6 +290,7 @@ type MetadataStatement struct {
 	IsKeyRestricted                 bool   `json:"isKeyRestricted"`
 	IsFreshUserVerificationRequired bool   `json:"isFreshUserVerificationRequired"`
 	Icon                            string `json:"icon"`
+	IconDark                        string `json:"icon_dark"`
 }
 
 /*

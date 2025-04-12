@@ -1,12 +1,12 @@
 # AAGUID Information Generator
 
-This repository contains a command-line utility that fetches the [FIDO Alliance Metadata Service (MDS3)](https://mds.fidoalliance.org/) JWT, verifies its signature, parses the BLOB payload, and generates a static Go map of **AAGUID → Entry** objects. These objects capture various authenticator metadata entries as defined by the [FIDO specifications](https://fidoalliance.org/specifications/).
+This repository contains a command-line utility that fetches the [FIDO Alliance Metadata Service (MDS3)](https://mds.fidoalliance.org/) and [Passkey Provider AAGUIDs](https://github.com/passkeydeveloper/passkey-authenticator-aaguids) and generates a static Go map of **AAGUID → Entry** objects. These objects capture various authenticator metadata entries as defined by the [FIDO specifications](https://fidoalliance.org/specifications/).
 
 ## Overview
 
 - **`main.go`** — The generator tool that:
-    1. Downloads the MDS3 JWT
-    2. Verifies the JWT signature (using x5c cert chain)
+    1. Downloads the MDS3 JWT and Passkey Provider AAGUIDs
+    2. Verifies the JWT signature (using x5c cert chain) for MDS3
     3. Extracts the JSON payload and unmarshals it
     4. Builds a static map (`map[string]Entry`)
     5. Writes two files (`types.go`, `metadata.go`) under user provided location. By default `internal/aaguids/`.
