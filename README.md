@@ -54,7 +54,7 @@ data, exists := aaguids.GetEntry("AUTHENTICATOR_AAGUID")
 
 ## License
 
-[MIT License](LICENSE) (or whichever license you choose).
+[MIT License](LICENSE)
 
 ---
 
